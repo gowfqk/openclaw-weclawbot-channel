@@ -7,7 +7,7 @@
 //
 // Configuration:
 //   channels.weclawbot.token      — WS Agent token (required)
-//   channels.weclawbot.bridgeUrl  — WebSocket URL (default: wss://railway.122048.xyz/ws/agent)
+//   channels.weclawbot.bridgeUrl  — WebSocket URL (default: wss://<your-bridge-url>/ws/agent)
 //   channels.weclawbot.agentId    — Bridge Agent ID (default: "openclaw")
 //   channels.weclawbot.agentName  — display name (default: "OpenClaw")
 //   channels.weclawbot.command    — command alias (default: "openclaw")
@@ -136,12 +136,13 @@ export const weclawbotPlugin: ChannelPlugin<
     outbound: {
       deliveryMode: "direct",
       sendText: async (ctx) => {
-        // Direct outbound sends are used by the message tool. For the Bridge
-        // channel, the reply path is handled inline by the inbound dispatch,
-        // so this is intentionally a no-op that signals success.
-        // The actual reply delivery happens through the WebSocket registered
-        // by gateway.ts and dispatched by inbound.ts.
-        return { ok: true, messageId: `weclawbot:${Date.now()}` };
+        // For the Bridge channel, the reply path is handled inline by the
+        // inbound dispatch, so outbound sends through the message-tool are
+        // intentionally no-ops. Return a valid receipt so callers don't error.
+        return {
+          channel: WECLAWBOT_CHANNEL_ID,
+          messageId: `weclawbot:${Date.now()}`,
+        };
       },
       resolveTarget: ({ to }) => {
         return { ok: true, to: to || "weclawbot:default" };
