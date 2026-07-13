@@ -1,0 +1,14 @@
+{
+  "id": "weclawbot",
+  "name": "WeClawBot Bridge",
+  "description": "OpenClaw channel plugin for WeClawBot-Bridge — connects WeChat messages through the Bridge WS Remote Agent protocol",
+  "activation": { "onStartup": true },
+  "channels": ["weclawbot"],
+  "channelEnvVars": {
+    "weclawbot": [
+      "WECLAWBOT_BRIDGE_URL",
+      "WECLAWBOT_TOKEN",
+      "WECLAWBOT_AGENT_ID"
+    ]
+  }
+}
