@@ -130,23 +130,23 @@ export const weclawbotPlugin: ChannelPlugin<
         await startWeClawBotGatewayAccount(ctx);
       },
     },
+  },
 
-    // ---- outbound (direct delivery via WS) --------------------------------
+  // ---- outbound (top-level, per SDK convention) -------------------------
 
-    outbound: {
-      deliveryMode: "direct",
-      sendText: async (ctx) => {
-        // For the Bridge channel, the reply path is handled inline by the
-        // inbound dispatch, so outbound sends through the message-tool are
-        // intentionally no-ops. Return a valid receipt so callers don't error.
-        return {
-          channel: WECLAWBOT_CHANNEL_ID,
-          messageId: `weclawbot:${Date.now()}`,
-        };
-      },
-      resolveTarget: ({ to }) => {
-        return { ok: true, to: to || "weclawbot:default" };
-      },
+  outbound: {
+    deliveryMode: "direct",
+    sendText: async () => {
+      // For the Bridge channel, the reply path is handled inline by
+      // the inbound dispatch — outbound sends through the message-tool
+      // are intentionally no-ops. Return a valid receipt.
+      return {
+        channel: WECLAWBOT_CHANNEL_ID,
+        messageId: `weclawbot:${Date.now()}`,
+      };
+    },
+    resolveTarget: ({ to }) => {
+      return { ok: true, to: to || "weclawbot:default" };
     },
   },
 });

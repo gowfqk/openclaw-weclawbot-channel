@@ -14,6 +14,29 @@
       "WECLAWBOT_AGENT_ID"
     ]
   },
+  "channelConfigs": {
+    "weclawbot": {
+      "schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "token": { "type": "string" },
+          "bridgeUrl": { "type": "string" },
+          "agentId": { "type": "string" },
+          "agentName": { "type": "string" },
+          "command": { "type": "string" },
+          "allowFrom": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "uiHints": {
+        "token": { "label": "WS Token", "sensitive": true },
+        "bridgeUrl": { "label": "Bridge URL" },
+        "agentId": { "label": "Agent ID" },
+        "agentName": { "label": "Agent Name" },
+        "command": { "label": "Command Alias" }
+      }
+    }
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": true,
