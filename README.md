@@ -7,7 +7,7 @@
 ## 架构
 
 ```text
-微信 → WeClawBot-Bridge (Railway) → 本插件 (WebSocket) → OpenClaw Gateway
+微信 → WeClawBot-Bridge → 本插件 (WebSocket) → OpenClaw Gateway
 ```
 
 ## 安装
@@ -38,7 +38,7 @@ openclaw config set plugins.entries.weclawbot.enabled true
 ```bash
 # 方式一：环境变量（推荐）
 export WECLAWBOT_TOKEN="<Bridge WS Token>"
-export WECLAWBOT_BRIDGE_URL="wss://railway.122048.xyz/ws/agent"  # 可选，默认值
+export WECLAWBOT_BRIDGE_URL="wss://<your-bridge-url>/ws/agent"  # 可选，默认值
 export WECLAWBOT_AGENT_ID="openclaw"  # 可选，默认值
 ```
 
@@ -53,7 +53,7 @@ EnvironmentFile=/root/.config/openclaw-weclawbot.env
 ```bash
 # /root/.config/openclaw-weclawbot.env (chmod 600)
 WECLAWBOT_TOKEN=***
-WECLAWBOT_BRIDGE_URL=wss://railway.122048.xyz/ws/agent
+WECLAWBOT_BRIDGE_URL=wss://<your-bridge-url>/ws/agent
 WECLAWBOT_AGENT_ID=openclaw
 ```
 
@@ -65,7 +65,7 @@ WECLAWBOT_AGENT_ID=openclaw
     weclawbot: {
       enabled: true,
       token: "***",
-      bridgeUrl: "wss://railway.122048.xyz/ws/agent",
+      bridgeUrl: "wss://<your-bridge-url>/ws/agent",
       agentId: "openclaw",
     },
   },
@@ -88,7 +88,7 @@ journalctl -u openclaw.service -f
 预期日志：
 
 ```text
-WeClawBot: connecting to wss://railway.122048.xyz/ws/agent as agent "openclaw"
+WeClawBot: connecting to wss://<your-bridge-url>/ws/agent as agent "openclaw"
 WeClawBot: authenticated as agent "openclaw"
 ```
 
@@ -119,7 +119,7 @@ openclaw config get plugins.entries.weclawbot.enabled
 检查 Token 是否正确，Bridge Agent ID 是否匹配，Bridge WS endpoint 是否可达：
 
 ```bash
-curl -sS https://railway.122048.xyz/api/health
+curl -sS https://<your-bridge-url>/api/health
 ```
 
 ### 重连日志
