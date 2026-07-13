@@ -9,7 +9,6 @@
     "typecheck": "tsc --noEmit"
   },
   "keywords": ["openclaw", "channel", "plugin", "weclawbot", "wechat", "bridge"],
-  "author": "Zhang Deshuai",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.0.0",
