@@ -2,8 +2,8 @@
   "name": "openclaw-weclawbot-channel",
   "version": "0.1.0",
   "description": "OpenClaw channel plugin for WeClawBot-Bridge — connects WeChat through the Bridge WS Remote Agent protocol",
-  "main": "channel-plugin-api.js",
   "type": "module",
+  "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit"
@@ -20,5 +20,9 @@
   },
   "peerDependencies": {
     "openclaw": ">=2026.1.0"
+  },
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "runtimeExtensions": ["./dist/index.js"]
   }
 }
