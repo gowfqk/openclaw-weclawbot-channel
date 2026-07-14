@@ -16,8 +16,7 @@
     "typescript": "^5.5.0"
   },
   "dependencies": {
-    "ws": "^8.18.0",
-    "zod": "^3.23.0"
+    "ws": "^8.18.0"
   },
   "peerDependencies": {
     "openclaw": ">=2026.1.0"

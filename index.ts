@@ -1,7 +1,10 @@
 import { defineChannelPluginEntry } from "openclaw/plugin-sdk/channel-core";
 import { weclawbotPlugin } from "./src/channel.js";
 
-const entry = defineChannelPluginEntry({
+// Use explicit default export — defineChannelPluginEntry's return type
+// cannot be named in declaration output for external plugins.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _entry: any = defineChannelPluginEntry({
   id: "weclawbot",
   name: "WeClawBot Bridge",
   description:
@@ -9,4 +12,4 @@ const entry = defineChannelPluginEntry({
   plugin: weclawbotPlugin,
 });
 
-export default entry;
+export default _entry;

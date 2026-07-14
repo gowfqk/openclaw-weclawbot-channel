@@ -1,35 +1,11 @@
 // WeClawBot Bridge channel configuration schema.
-// This is intentionally minimal — we accept arbitrary config keys so the plugin
-// does not break when OpenClaw or the Bridge add new fields.
+// Cold-path validation is handled by channelConfigs in openclaw.plugin.json.
+// This is a lightweight runtime passthrough that defers to the manifest schema.
+// External plugins should NOT use buildChannelConfigSchema — it depends on
+// OpenClaw's internal zod types which are binary-incompatible with user-space zod.
 
-import { buildChannelConfigSchema } from "openclaw/plugin-sdk/channel-config-schema";
-import { z } from "zod";
-
-const WeClawBotAccountSchema = z
-  .object({
-    name: z.string().optional(),
-    enabled: z.boolean().optional(),
-    token: z.string().optional(),
-    bridgeUrl: z.string().optional(),
-    agentId: z.string().optional(),
-    agentName: z.string().optional(),
-    command: z.string().optional(),
-  })
-  .strict();
-
-const WeClawBotConfigSchema = z
-  .object({
-    name: z.string().optional(),
-    enabled: z.boolean().optional(),
-    token: z.string().optional(),
-    bridgeUrl: z.string().optional(),
-    agentId: z.string().optional(),
-    agentName: z.string().optional(),
-    command: z.string().optional(),
-    defaultAccount: z.string().optional(),
-    accounts: z.record(z.string(), WeClawBotAccountSchema).optional(),
-  })
-  .strict();
-
-const _schema = buildChannelConfigSchema(WeClawBotConfigSchema);
-export const weclawbotChannelConfigSchema: typeof _schema = _schema;
+export const weclawbotChannelConfigSchema = {
+  // Schema validation is defined declaratively in openclaw.plugin.json
+  // under channelConfigs.weclawbot.schema. This runtime export exists
+  // only to satisfy the ChannelPlugin configSchema contract.
+} as Record<string, never>;
