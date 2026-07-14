@@ -64,8 +64,8 @@ WECLAWBOT_AGENT_ID=openclaw
   "channels": {
     "weclawbot": {
       "enabled": true,
-      "token": "wsk_lMJskzogWAmiTCm6wDDBfuveYxx4BkVB7LUD-Qaoc_A",
-      "bridgeUrl": "wss://railway.122048.xyz/ws/agent",
+      "token": "***",
+      "bridgeUrl": "wss://<your-bridge-url>/ws/agent",
       "agentId": "openclawtest"
     }
   }
