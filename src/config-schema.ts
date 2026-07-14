@@ -31,4 +31,5 @@ const WeClawBotConfigSchema = z
   })
   .strict();
 
-export const weclawbotChannelConfigSchema = buildChannelConfigSchema(WeClawBotConfigSchema);
+const _schema = buildChannelConfigSchema(WeClawBotConfigSchema);
+export const weclawbotChannelConfigSchema: typeof _schema = _schema;

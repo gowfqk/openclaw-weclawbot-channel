@@ -75,9 +75,8 @@ function requiredStr(value: unknown, fallback: string): string {
 }
 
 function resolveChannelConfig(cfg: OpenClawConfig): WeClawBotAccountConfig | undefined {
-  return (cfg as Record<string, unknown>).channels?.[
-    WECLAWBOT_CHANNEL_ID
-  ] as WeClawBotAccountConfig | undefined;
+  const channels = cfg.channels as Record<string, unknown> | undefined;
+  return channels?.[WECLAWBOT_CHANNEL_ID] as WeClawBotAccountConfig | undefined;
 }
 
 // ---- account listing -------------------------------------------------------
