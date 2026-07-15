@@ -148,7 +148,7 @@ function resolveWeClawBotAccount(params: {
     token,
     bridgeUrl,
     agentId,
-    agentName: merged.agentName ?? "OpenClaw",
-    command: merged.command ?? "openclaw",
+    agentName: merged.agentName ?? agentId,
+    command: merged.command ?? agentId,
   };
 }
