@@ -59,6 +59,10 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
     return;
   }
 
+  // Bridge permits exactly one reply for requestId. Buffer every visible block
+  // during OpenClaw's run, then send only the final completed block afterwards.
+  let finalReplyText: string | null = null;
+
   await channelRuntime.inbound.run({
     channel: WECLAWBOT_CHANNEL_ID,
     accountId: account.accountId,
@@ -125,24 +129,11 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
             channelRuntime.reply.dispatchReplyWithBufferedBlockDispatcher,
           delivery: {
             deliver: async (deliveryInput) => {
-              // Extract the final visible text from the reply and send it
-              // back through the Bridge WebSocket.
+              // Buffer all blocks; sending an early tool/preamble block resolves
+              // the Bridge request before OpenClaw produces its final answer.
               const replyText = extractReplyText(deliveryInput);
-              if (replyText) {
-                try {
-                  await sendWeClawBotReply({
-                    ctx,
-                    ws,
-                    requestId,
-                    text: replyText,
-                  });
-                } catch (err) {
-                  ctx.log?.error?.(
-                    `WeClawBot: failed to send reply for ${requestId}: ${String(err)}`,
-                  );
-                }
-              }
-              return { visibleReplySent: Boolean(replyText) };
+              if (replyText) finalReplyText = replyText;
+              return { visibleReplySent: false };
             },
           },
           record: {
@@ -155,6 +146,13 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
       },
     },
   });
+
+  if (!finalReplyText) return;
+  try {
+    await sendWeClawBotReply({ ctx, ws, requestId, text: finalReplyText });
+  } catch (err) {
+    ctx.log?.error?.(`WeClawBot: failed to send final reply for ${requestId}: ${String(err)}`);
+  }
 }
 
 // ---- reply extraction ------------------------------------------------------
