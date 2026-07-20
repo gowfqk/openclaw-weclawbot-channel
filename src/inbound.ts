@@ -18,6 +18,8 @@ type DispatchParams = {
   ctx: ChannelGatewayContext<ResolvedWeClawBotAccount>;
   requestId: string;
   text: string;
+  /** Socket owned by this account's gateway connection. */
+  ws: import("ws").WebSocket;
 };
 
 // ---- public API ------------------------------------------------------------
@@ -27,7 +29,7 @@ type DispatchParams = {
  * agent pipeline. The reply is sent back through the same WebSocket connection.
  */
 export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<void> {
-  const { ctx, requestId, text } = params;
+  const { ctx, requestId, text, ws } = params;
   const channelRuntime = ctx.channelRuntime as WeClawBotChannelRuntime | undefined;
   const { account } = ctx;
 
@@ -50,14 +52,9 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
   const timestamp = Date.now();
   const messageId = randomUUID();
 
-  // We need a reference to the WebSocket for sending replies. The gateway.ts
-  // module manages the WS lifecycle, but we need a way to send. For now, we
-  // use a module-level registry that gateway.ts populates.
-  const ws = getActiveWebSocket();
-  if (!ws) {
-    ctx.log?.warn?.("WeClawBot: no active WebSocket for reply delivery");
-    return;
-  }
+  // The gateway supplies the socket that received this request. Keeping it in
+  // the dispatch scope prevents another configured account from stealing the
+  // correlated Bridge reply while this turn is running.
 
   // The runtime dispatcher may call delivery once with the final visible
   // answer. Keep only the newest completed block and emit it once after the
@@ -191,20 +188,4 @@ function extractReplyText(deliveryInput: unknown): string | null {
   }
 
   return null;
-}
-
-// ---- WebSocket registry ----------------------------------------------------
-
-// Module-level active WebSocket reference. Set by gateway.ts after connection,
-// cleared on disconnect. This is a pragmatic bridge between the gateway
-// lifecycle (which owns the WS) and the inbound/reply path.
-
-let _activeWs: import("ws").WebSocket | null = null;
-
-export function setActiveWebSocket(ws: import("ws").WebSocket | null): void {
-  _activeWs = ws;
-}
-
-export function getActiveWebSocket(): import("ws").WebSocket | null {
-  return _activeWs;
 }

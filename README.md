@@ -16,10 +16,11 @@
 # 1. 安装 OpenClaw（如果还没有）
 npm install -g openclaw
 
-# 2. 进入插件目录，安装依赖并构建
+# 2. 进入插件目录，按锁定依赖安装并构建
 cd openclaw-weclawbot-channel
-npm install
+npm ci
 npm run build
+npm test
 
 # 3. 在 OpenClaw 中安装本插件
 openclaw plugins install --link "$(pwd)"
@@ -71,6 +72,13 @@ WECLAWBOT_AGENT_ID=openclaw
   }
 }
 ```
+
+## 支持范围与限制
+
+- 当前上游 Bridge 会将微信发送者归一化为 `default`，因此本插件是**单用户通道**：不支持按真实微信用户做会话隔离或白名单控制。
+- 配置中不提供 `allowFrom`；它无法在当前 Bridge 协议下提供可靠的访问保护。请在 Bridge/微信入口侧限制可访问用户。
+- 当前只处理文本消息。Bridge 传来的图片、文件和语音不会被转为 OpenClaw 附件；非文本消息会收到明确提示，而非静默丢弃。
+- 远程回复仅在对应入站 WebSocket 连接上发送，多账号配置之间不会共享或覆盖连接。
 
 ## 重启
 

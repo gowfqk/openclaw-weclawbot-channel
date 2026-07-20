@@ -6,7 +6,8 @@
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test tests/**/*.test.mjs"
   },
   "keywords": ["openclaw", "channel", "plugin", "weclawbot", "wechat", "bridge"],
   "license": "MIT",

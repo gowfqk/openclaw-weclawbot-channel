@@ -24,8 +24,7 @@
           "bridgeUrl": { "type": "string" },
           "agentId": { "type": "string" },
           "agentName": { "type": "string" },
-          "command": { "type": "string" },
-          "allowFrom": { "type": "array", "items": { "type": "string" } }
+          "command": { "type": "string" }
         }
       },
       "uiHints": {

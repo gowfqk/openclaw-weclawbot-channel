@@ -9,7 +9,6 @@ import { randomUUID } from "node:crypto";
 import type { ChannelGatewayContext } from "openclaw/plugin-sdk/channel-contract";
 import { WECLAWBOT_CHANNEL_ID, type ResolvedWeClawBotAccount } from "./accounts.js";
 import { dispatchWeClawBotInbound } from "./inbound.js";
-import { setActiveWebSocket } from "./inbound.js";
 
 // ---- constants -------------------------------------------------------------
 
@@ -165,9 +164,6 @@ async function connectAndServe(params: {
     lastError: null,
   });
 
-  // Register the active WS so inbound dispatches can send replies.
-  setActiveWebSocket(ws);
-
   // Pending chat requests keyed by Bridge request id.
   const pending = new Map<string, PendingRequest>();
 
@@ -203,7 +199,6 @@ async function connectAndServe(params: {
 
       ws.on("close", (code, reason) => {
         clearInterval(pingTimer);
-        setActiveWebSocket(null);
         abortSignal.removeEventListener("abort", onAbort);
         reject(
           new Error(
@@ -256,9 +251,23 @@ async function handleMessage(params: {
     const payload = msg.payload as Record<string, unknown> | undefined;
     const body = payload?.message as Record<string, unknown> | undefined;
     const text = body?.text;
+    const hasMedia = body?.media != null;
 
     if (typeof id !== "string" || !id) return;
-    if (typeof text !== "string" || !text.trim()) return;
+    if (typeof text !== "string" || !text.trim()) {
+      // The Bridge protocol can carry media, but this direct channel has no
+      // media download/attachment mapping yet. Reply explicitly instead of
+      // silently dropping an image, file, or voice-only message.
+      if (hasMedia && ws.readyState === WebSocket.OPEN) {
+        await sendWeClawBotReply({
+          ctx,
+          ws,
+          requestId: id,
+          text: "当前 WeClawBot OpenClaw 通道仅支持文本消息，暂无法处理图片、文件或语音。",
+        });
+      }
+      return;
+    }
 
     // Check if this is a reply to an outbound message.
     if (pending.has(id)) {
@@ -273,6 +282,7 @@ async function handleMessage(params: {
     try {
       await dispatchWeClawBotInbound({
         ctx,
+        ws,
         requestId: id,
         text: text.trim(),
       });
