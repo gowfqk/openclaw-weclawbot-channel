@@ -137,16 +137,19 @@ export const weclawbotPlugin: ChannelPlugin<
   outbound: {
     deliveryMode: "direct",
     sendText: async () => {
-      // For the Bridge channel, the reply path is handled inline by
-      // the inbound dispatch — outbound sends through the message-tool
-      // are intentionally no-ops. Return a valid receipt.
-      return {
-        channel: WECLAWBOT_CHANNEL_ID,
-        messageId: `weclawbot:${Date.now()}`,
-      };
+      // Bridge's `push` frame is agent-to-WeChat and does not accept an
+      // OpenClaw target. A direct-channel socket is intentionally scoped to
+      // an inbound request, so there is no safe general outbound route here.
+      // Reject rather than returning a fabricated receipt for a lost message.
+      throw new Error(
+        "WeClawBot does not support proactive OpenClaw sends: the Bridge WS Remote Agent protocol has no targetable outbound delivery route.",
+      );
     },
     resolveTarget: ({ to }) => {
-      return { ok: true, to: to || "weclawbot:default" };
+      if (!to || to === "weclawbot:default") {
+        return { ok: false, error: new Error("WeClawBot supports replies to inbound requests only; proactive sends are unavailable.") };
+      }
+      return { ok: false, error: new Error(`Unsupported WeClawBot target: ${to}`) };
     },
   },
 });

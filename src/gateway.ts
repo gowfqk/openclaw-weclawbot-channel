@@ -109,50 +109,7 @@ async function connectAndServe(params: {
 
   log?.info?.(`WeClawBot: connecting to ${url} as agent "${account.agentId}"`);
 
-  const ws = await new Promise<WebSocket>((resolve, reject) => {
-    const socket = new WebSocket(url);
-    const failTimer = setTimeout(
-      () => reject(new Error("WebSocket connection timed out")),
-      AUTH_TIMEOUT_MS,
-    );
-
-    socket.on("open", () => {
-      clearTimeout(failTimer);
-      // Send authentication immediately.
-      socket.send(
-        JSON.stringify({
-          type: "auth",
-          token: account.token,
-          agentId: account.agentId,
-          name: account.agentName,
-          command: account.command,
-          description: "OpenClaw Channel Plugin",
-        }),
-      );
-    });
-
-    socket.on("error", (err) => {
-      clearTimeout(failTimer);
-      reject(err);
-    });
-
-    // Wait for auth_ok or auth_fail.
-    socket.on("message", (data) => {
-      try {
-        const msg = JSON.parse(data.toString());
-        if (msg.type === "auth_ok") {
-          clearTimeout(failTimer);
-          resolve(socket);
-        } else if (msg.type === "auth_fail") {
-          clearTimeout(failTimer);
-          reject(new Error(`Bridge authentication rejected: ${msg.reason ?? "unknown"}`));
-        }
-        // Other messages before auth_ok are ignored.
-      } catch {
-        // non-JSON during auth — ignore.
-      }
-    });
-  });
+  const ws = await authenticateWebSocket({ account, url, abortSignal });
 
   log?.info?.(`WeClawBot: authenticated as agent "${account.agentId}"`);
 
@@ -217,6 +174,114 @@ async function connectAndServe(params: {
     clearInterval(pingTimer);
     abortSignal.removeEventListener("abort", onAbort);
   }
+}
+
+type AuthenticatedAccount = Pick<
+  ResolvedWeClawBotAccount,
+  "token" | "agentId" | "agentName" | "command"
+>;
+
+/**
+ * Establish and authenticate one socket. The timeout covers both the TCP/WS
+ * handshake and Bridge's auth response. Every unsuccessful branch destroys the
+ * candidate socket so a later retry cannot leave a duplicate connection alive.
+ */
+export async function authenticateWebSocket(params: {
+  account: AuthenticatedAccount;
+  url: string;
+  abortSignal?: AbortSignal;
+  createSocket?: (url: string) => WebSocket;
+  /** Injectable for deterministic transport tests. */
+  timeoutMs?: number;
+}): Promise<WebSocket> {
+  const {
+    account,
+    url,
+    abortSignal,
+    createSocket = (target) => new WebSocket(target),
+    timeoutMs = AUTH_TIMEOUT_MS,
+  } = params;
+
+  return new Promise<WebSocket>((resolve, reject) => {
+    const socket = createSocket(url);
+    let settled = false;
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      socket.off("open", onOpen);
+      socket.off("message", onMessage);
+      socket.off("error", onError);
+      socket.off("close", onClose);
+      abortSignal?.removeEventListener("abort", onAbort);
+    };
+
+    const closeFailedSocket = () => {
+      if (socket.readyState !== WebSocket.CLOSED) {
+        try {
+          socket.terminate();
+        } catch {
+          // A partially-created socket may not be terminable. It will be GC'd.
+        }
+      }
+    };
+
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      closeFailedSocket();
+      reject(error);
+    };
+
+    const succeed = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(socket);
+    };
+
+    const onOpen = () => {
+      try {
+        socket.send(
+          JSON.stringify({
+            type: "auth",
+            token: account.token,
+            agentId: account.agentId,
+            name: account.agentName,
+            command: account.command,
+            description: "OpenClaw Channel Plugin",
+          }),
+        );
+      } catch (error) {
+        fail(error instanceof Error ? error : new Error(String(error)));
+      }
+    };
+
+    const onMessage = (data: WebSocket.RawData) => {
+      try {
+        const msg = JSON.parse(data.toString()) as Record<string, unknown>;
+        if (msg.type === "auth_ok") {
+          succeed();
+        } else if (msg.type === "auth_fail") {
+          fail(new Error(`Bridge authentication rejected: ${String(msg.reason ?? "unknown")}`));
+        }
+      } catch {
+        // Ignore malformed/non-auth frames until the authentication timeout.
+      }
+    };
+
+    const onError = (error: Error) => fail(error);
+    const onClose = (code: number, reason: Buffer) =>
+      fail(new Error(`WebSocket closed before authentication: ${code} ${reason.toString() || "no reason"}`));
+    const onAbort = () => fail(new Error("WeClawBot gateway shutdown during authentication"));
+    const timer = setTimeout(() => fail(new Error("WebSocket authentication timed out")), timeoutMs);
+
+    socket.once("open", onOpen);
+    socket.on("message", onMessage);
+    socket.once("error", onError);
+    socket.once("close", onClose);
+    abortSignal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 // ---- message handling ------------------------------------------------------
