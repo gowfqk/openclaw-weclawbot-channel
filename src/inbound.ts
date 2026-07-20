@@ -59,8 +59,9 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
     return;
   }
 
-  // Each delivery block is a user-visible progress reply. The Bridge keeps the
-  // request pending until the final reply emitted after inbound.run() returns.
+  // The runtime dispatcher may call delivery once with the final visible
+  // answer. Keep only the newest completed block and emit it once after the
+  // run, so a normal OpenClaw reply does not appear twice in WeChat.
   let finalReplyText: string | null = null;
 
   await channelRuntime.inbound.run({
@@ -132,13 +133,11 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
               const replyText = extractReplyText(deliveryInput);
               if (replyText) {
                 finalReplyText = replyText;
-                try {
-                  await sendWeClawBotReply({ ctx, ws, requestId, text: replyText, final: false });
-                } catch (err) {
-                  ctx.log?.error?.(`WeClawBot: failed to send progress reply for ${requestId}: ${String(err)}`);
-                }
               }
-              return { visibleReplySent: Boolean(replyText) };
+              // Reply after inbound.run() completes. Sending here as well
+              // produces a duplicate: this callback often receives the same
+              // completed answer that is retained in finalReplyText.
+              return { visibleReplySent: false };
             },
           },
           record: {
