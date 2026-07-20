@@ -59,8 +59,8 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
     return;
   }
 
-  // Bridge permits exactly one reply for requestId. Buffer every visible block
-  // during OpenClaw's run, then send only the final completed block afterwards.
+  // Each delivery block is a user-visible progress reply. The Bridge keeps the
+  // request pending until the final reply emitted after inbound.run() returns.
   let finalReplyText: string | null = null;
 
   await channelRuntime.inbound.run({
@@ -129,11 +129,16 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
             channelRuntime.reply.dispatchReplyWithBufferedBlockDispatcher,
           delivery: {
             deliver: async (deliveryInput) => {
-              // Buffer all blocks; sending an early tool/preamble block resolves
-              // the Bridge request before OpenClaw produces its final answer.
               const replyText = extractReplyText(deliveryInput);
-              if (replyText) finalReplyText = replyText;
-              return { visibleReplySent: false };
+              if (replyText) {
+                finalReplyText = replyText;
+                try {
+                  await sendWeClawBotReply({ ctx, ws, requestId, text: replyText, final: false });
+                } catch (err) {
+                  ctx.log?.error?.(`WeClawBot: failed to send progress reply for ${requestId}: ${String(err)}`);
+                }
+              }
+              return { visibleReplySent: Boolean(replyText) };
             },
           },
           record: {

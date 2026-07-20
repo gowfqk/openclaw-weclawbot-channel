@@ -312,14 +312,16 @@ export async function sendWeClawBotReply(params: {
   ws: WebSocket;
   requestId: string;
   text: string;
+  /** Non-final replies keep the Bridge request open for the final answer. */
+  final?: boolean;
 }): Promise<void> {
-  const { ws, requestId, text } = params;
+  const { ws, requestId, text, final = true } = params;
   if (ws.readyState !== WebSocket.OPEN) {
     throw new Error("WeClawBot WebSocket is not connected");
   }
   await new Promise<void>((resolve, reject) => {
     ws.send(
-      JSON.stringify({ type: "chat", id: requestId, text }),
+      JSON.stringify({ type: "chat", id: requestId, text, final }),
       (err) => (err ? reject(err) : resolve()),
     );
   });
