@@ -316,30 +316,21 @@ async function handleMessage(params: {
     const payload = msg.payload as Record<string, unknown> | undefined;
     const body = payload?.message as Record<string, unknown> | undefined;
     const text = body?.text;
-    const hasMedia = body?.media != null;
+    const media = body?.media;
+    const hasMedia = media != null;
 
     if (typeof id !== "string" || !id) return;
-    if (typeof text !== "string" || !text.trim()) {
-      // The Bridge protocol can carry media, but this direct channel has no
-      // media download/attachment mapping yet. Reply explicitly instead of
-      // silently dropping an image, file, or voice-only message.
-      if (hasMedia && ws.readyState === WebSocket.OPEN) {
-        await sendWeClawBotReply({
-          ctx,
-          ws,
-          requestId: id,
-          text: "当前 WeClawBot OpenClaw 通道仅支持文本消息，暂无法处理图片、文件或语音。",
-        });
-      }
-      return;
-    }
+
+    // Media-only messages are valid when the Bridge attaches base64 media.
+    // Drop only frames with neither text nor media.
+    if ((typeof text !== "string" || !text.trim()) && !hasMedia) return;
 
     // Check if this is a reply to an outbound message.
     if (pending.has(id)) {
       const pr = pending.get(id)!;
       clearTimeout(pr.timer);
       pending.delete(id);
-      pr.resolve(text);
+      pr.resolve(typeof text === "string" ? text : "");
       return;
     }
 
@@ -349,7 +340,11 @@ async function handleMessage(params: {
         ctx,
         ws,
         requestId: id,
-        text: text.trim(),
+        text: typeof text === "string" ? text : "",
+        media: hasMedia ? media : undefined,
+        mediaType: typeof body?.mediaType === "string" ? body.mediaType : undefined,
+        mediaFileName: typeof body?.mediaFileName === "string" ? body.mediaFileName : undefined,
+        mediaFormat: typeof body?.mediaFormat === "string" ? body.mediaFormat : undefined,
       });
     } catch (err) {
       log?.warn?.(`WeClawBot: failed to dispatch inbound message ${id}: ${formatError(err)}`);
@@ -389,16 +384,27 @@ export async function sendWeClawBotReply(params: {
   text: string;
   /** Non-final replies keep the Bridge request open for the final answer. */
   final?: boolean;
+  /** Optional base64-encoded media attached to the reply. */
+  media?: {
+    data: Buffer;
+    mediaType: string;
+    mediaFileName?: string;
+    mediaFormat?: string;
+  } | null;
 }): Promise<void> {
-  const { ws, requestId, text, final = true } = params;
+  const { ws, requestId, text, final = true, media } = params;
   if (ws.readyState !== WebSocket.OPEN) {
     throw new Error("WeClawBot WebSocket is not connected");
   }
+  const frame: Record<string, unknown> = { type: "chat", id: requestId, text, final };
+  if (media?.data?.length) {
+    frame.media = media.data.toString("base64");
+    frame.mediaType = media.mediaType;
+    if (media.mediaFileName) frame.mediaFileName = media.mediaFileName;
+    if (media.mediaFormat) frame.mediaFormat = media.mediaFormat;
+  }
   await new Promise<void>((resolve, reject) => {
-    ws.send(
-      JSON.stringify({ type: "chat", id: requestId, text, final }),
-      (err) => (err ? reject(err) : resolve()),
-    );
+    ws.send(JSON.stringify(frame), (err) => (err ? reject(err) : resolve()));
   });
 }
 
