@@ -5,7 +5,7 @@
 // Outbound: load OpenClaw reply media (file:// or http(s) URLs) into a buffer
 // and re-encode as the Bridge's base64 reply protocol.
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -94,35 +94,48 @@ const EXT_MIME: Record<string, string> = {
 
 // ---- inbound: Bridge → OpenClaw -------------------------------------------
 
+/** Upper bound for inbound attachments, matching the Bridge's 20 MB upload cap. */
+const MAX_INBOUND_MEDIA_BYTES = 20 * 1024 * 1024;
+
 /**
- * Decode Bridge base64 media and persist it under the session store path so
- * OpenClaw can attach the local file to the agent turn. Returns null when the
- * frame carries no usable media.
+ * Decode Bridge base64 media and persist it into OpenClaw's media store
+ * (`<mediaDir>/inbound`) so the agent pipeline can stage and read it.
+ * Returns null when the frame carries no usable media.
  */
 export async function saveInboundMedia(params: {
-  storePath: string;
+  saveMediaBuffer: (
+    buffer: Buffer,
+    contentType?: string,
+    subdir?: string,
+    maxBytes?: number,
+    originalFilename?: string,
+  ) => Promise<{ path: string; contentType?: string; id: string; size: number }>;
   media: unknown;
   mediaType?: string;
   mediaFileName?: string;
   mediaFormat?: string;
   messageId: string;
 }): Promise<SavedInboundMedia | null> {
-  const { storePath, media, mediaType, mediaFileName, mediaFormat, messageId } = params;
+  const { saveMediaBuffer, media, mediaType, mediaFileName, mediaFormat, messageId } = params;
   const buf = decodeBase64Media(media);
   if (!buf || buf.length === 0) return null;
 
   const ext = resolveExtension({ mediaType, mediaFileName, mediaFormat, buf });
-  const mediaDir = path.join(storePath, "media");
-  await mkdir(mediaDir, { recursive: true });
-  const fileName = `${messageId}.${ext}`;
-  const filePath = path.join(mediaDir, fileName);
-  await writeFile(filePath, buf);
+  const contentType = mimeForExtension(ext);
+  const originalFilename = mediaFileName || `${messageId}.${ext}`;
+  const saved = await saveMediaBuffer(
+    buf,
+    contentType,
+    "inbound",
+    MAX_INBOUND_MEDIA_BYTES,
+    originalFilename,
+  );
 
   return {
-    path: filePath,
-    contentType: mimeForExtension(ext),
+    path: saved.path,
+    contentType: saved.contentType ?? contentType,
     kind: inboundKindFor(mediaType, ext),
-    fileName,
+    fileName: path.basename(saved.path),
   };
 }
 

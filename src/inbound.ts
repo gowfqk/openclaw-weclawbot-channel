@@ -17,7 +17,7 @@ import {
 
 type WeClawBotChannelRuntime = Pick<
   PluginRuntime["channel"],
-  "inbound" | "reply" | "routing" | "session"
+  "inbound" | "reply" | "routing" | "session" | "media"
 >;
 
 type DispatchParams = {
@@ -74,11 +74,12 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
   const timestamp = Date.now();
   const messageId = randomUUID();
 
-  // Decode and persist inbound media so OpenClaw can attach the local file.
+  // Decode and persist inbound media into OpenClaw's media store so the agent
+  // pipeline can stage and read the file (plain session-store paths are blocked).
   let savedMedia: Awaited<ReturnType<typeof saveInboundMedia>> = null;
   try {
     savedMedia = await saveInboundMedia({
-      storePath,
+      saveMediaBuffer: channelRuntime.media.saveMediaBuffer,
       media,
       mediaType,
       mediaFileName,
@@ -157,6 +158,7 @@ export async function dispatchWeClawBotInbound(params: DispatchParams): Promise<
                 media: [
                   {
                     path: savedMedia.path,
+                    url: savedMedia.path,
                     contentType: savedMedia.contentType,
                     kind: savedMedia.kind,
                     messageId: input.id,
